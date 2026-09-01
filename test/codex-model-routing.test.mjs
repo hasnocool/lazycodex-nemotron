@@ -8,6 +8,33 @@ import { describe, it } from "node:test"
 import { configureCodexRouting } from "../lib/codex-model-routing.mjs"
 
 describe("Codex model routing", () => {
+  it("migrates the retired Nemotron model without rewriting unrelated agent models", async () => {
+    const root = await mkdtemp(join(tmpdir(), "lazycodex-migrate-"))
+    const codexHome = join(root, ".codex")
+    const configPath = join(codexHome, "config.toml")
+    const agentsDir = join(codexHome, "agents")
+    const stalePath = join(agentsDir, "atlas.toml")
+    const currentPath = join(agentsDir, "oracle.toml")
+    await mkdir(agentsDir, { recursive: true })
+    await writeFile(stalePath, 'name = "atlas"\nmodel = "nvidia/nemotron-3-nano"\n', "utf8")
+    await writeFile(currentPath, 'name = "oracle"\nmodel = "some-current-model"\n', "utf8")
+
+    const previousConfig = process.env.LAZYCODEX_CODEX_CONFIG
+    process.env.LAZYCODEX_CODEX_CONFIG = configPath
+    try {
+      const result = await configureCodexRouting({
+        args: ["--model", "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free"],
+      })
+
+      assert.equal(result.migratedLegacyAgents.length, 1)
+      assert.match(await readFile(stalePath, "utf8"), /model = "nvidia\/nemotron-3-ultra-550b-a55b:free"/)
+      assert.match(await readFile(currentPath, "utf8"), /model = "some-current-model"/)
+    } finally {
+      if (previousConfig === undefined) delete process.env.LAZYCODEX_CODEX_CONFIG
+      else process.env.LAZYCODEX_CODEX_CONFIG = previousConfig
+    }
+  })
+
   it("configures an arbitrary model without rewriting unmanaged agents", async () => {
     const root = await mkdtemp(join(tmpdir(), "lazycodex-routing-"))
     const codexHome = join(root, ".codex")
