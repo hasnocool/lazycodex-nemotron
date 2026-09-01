@@ -1,7 +1,7 @@
 {
   "name": "lazycodex-ai",
-  "version": "0.3.0",
-  "description": "Codex install alias for oh-my-openagent with NVIDIA Build and OpenRouter model profiles.",
+  "version": "0.4.0",
+  "description": "Model-agnostic Codex install alias for oh-my-openagent with curated NVIDIA Build and OpenRouter profiles.",
   "type": "module",
   "bin": {
     "lazycodex-ai": "bin/lazycodex-ai.js"
@@ -21,6 +21,8 @@
     "oh-my-openagent",
     "ai-agents",
     "orchestration",
+    "model-agnostic",
+    "custom-models",
     "nvidia",
     "nvidia-build",
     "openrouter",
@@ -30,10 +32,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/code-yeongyu/lazycodex.git"
+    "url": "git+https://github.com/hasnocool/lazycodex-nemotron.git"
   },
   "bugs": {
-    "url": "https://github.com/code-yeongyu/lazycodex/issues"
+    "url": "https://github.com/hasnocool/lazycodex-nemotron/issues"
   },
-  "homepage": "https://lazycodex.ai"
+  "homepage": "https://github.com/hasnocool/lazycodex-nemotron"
 }
