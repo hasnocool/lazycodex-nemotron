@@ -4,18 +4,45 @@
 
 import { spawn } from "node:child_process"
 import { configureNvidiaAndOpenRouter, getOpenCodeConfigPath } from "../lib/configure.mjs"
+import { configureCodexRouting, codexModelHelp } from "../lib/codex-model-routing.mjs"
 import { MODEL_GROUPS, RECOMMENDED_ROUTES } from "../lib/model-profile.mjs"
 
 const args = process.argv.slice(2)
 const dryRun = args[0] === "--dry-run"
 const forwardedArgs = dryRun ? args.slice(1) : args
 
-function hasProviderFlag(name) {
+function hasRoutingFlag(name) {
   return forwardedArgs.includes(name)
 }
 
-function stripProviderFlags(values) {
-  return values.filter((value) => value !== "--nvidia-build" && value !== "--openrouter")
+function hasRoutingConfiguration() {
+  return [
+    "--nvidia-build",
+    "--openrouter",
+    "--any-model",
+    "--model",
+    "--provider",
+    "--base-url",
+    "--env-key",
+    "--wire-api",
+    "--profile",
+  ].some((flag) => forwardedArgs.includes(flag))
+}
+
+function stripRoutingFlags(values) {
+  const valueFlags = new Set(["--model", "--provider", "--base-url", "--env-key", "--wire-api", "--profile"])
+  const result = []
+  for (let index = 0; index < values.length; index += 1) {
+    if (valueFlags.has(values[index])) {
+      index += 1
+      continue
+    }
+    if (values[index] === "--nvidia-build" || values[index] === "--openrouter" || values[index] === "--any-model") {
+      continue
+    }
+    result.push(values[index])
+  }
+  return result
 }
 
 function spawnAsync(command, commandArgs) {
@@ -45,6 +72,32 @@ function printModels() {
   for (const [role, model] of Object.entries(RECOMMENDED_ROUTES)) {
     console.log(`  ${role}: ${model}`)
   }
+
+  console.log(`\n${codexModelHelp()}`)
+}
+
+async function configureRouting({ dryRun: isDryRun }) {
+  const codex = await configureCodexRouting({ args: forwardedArgs, dryRun: isDryRun })
+  const openCode = await configureNvidiaAndOpenRouter({ dryRun: isDryRun })
+
+  if (isDryRun) {
+    console.log(`Codex: ${codex.configPath}`)
+    console.log(`Codex profile: ${codex.profileName}`)
+    console.log(`Codex primary: ${codex.primary.provider}/${codex.primary.model}`)
+    console.log(`OpenCode: ${openCode.targetPath}`)
+    return
+  }
+
+  console.log(`Configured Codex model routing in ${codex.configPath}`)
+  console.log(`Active profile: ${codex.profileName} (${codex.primary.provider}/${codex.primary.model})`)
+  if (codex.backupPath) console.log(`Codex backup: ${codex.backupPath}`)
+  if (codex.agentResult.changed.length > 0) {
+    console.log(`Updated ${codex.agentResult.changed.length} Codex agent model file(s).`)
+  }
+  for (const backup of codex.agentResult.backups) console.log(`Agent backup: ${backup}`)
+
+  console.log(`Configured OpenCode providers in ${openCode.targetPath}`)
+  if (openCode.backupPath) console.log(`OpenCode backup: ${openCode.backupPath}`)
 }
 
 async function main() {
@@ -55,28 +108,18 @@ async function main() {
     return
   }
 
-  if (command === "configure" || command === "providers") {
-    const result = await configureNvidiaAndOpenRouter({ dryRun })
-    if (dryRun) {
-      console.log(`Would update ${result.targetPath} with the NVIDIA Build and OpenRouter provider profile.`)
-      return
-    }
-
-    console.log(`Configured NVIDIA Build and OpenRouter in ${result.targetPath}`)
-    if (result.backupPath) {
-      console.log(`Backup created at ${result.backupPath}`)
-    }
-    if (!process.env.NVIDIA_API_KEY) {
-      console.warn("Warning: NVIDIA_API_KEY is not set in the current environment.")
-    }
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.warn("Warning: OPENROUTER_API_KEY is not set; use OpenCode /connect for OpenRouter credentials.")
-    }
+  if (command === "help" || command === "--help" || command === "-h") {
+    console.log(codexModelHelp())
     return
   }
 
-  const configureProviders = command === "install" && (hasProviderFlag("--nvidia-build") || hasProviderFlag("--openrouter"))
-  const cleanedArgs = stripProviderFlags(forwardedArgs)
+  if (command === "configure" || command === "providers") {
+    await configureRouting({ dryRun })
+    return
+  }
+
+  const configureProviders = command === "install" && hasRoutingConfiguration()
+  const cleanedArgs = stripRoutingFlags(forwardedArgs)
 
   const commandArgs =
     cleanedArgs[0] === "install"
@@ -97,6 +140,7 @@ async function main() {
       const configPath = getOpenCodeConfigPath()
       const displayPath = typeof configPath === "string" ? configPath : configPath.jsonc
       console.log(`configure: ${displayPath}`)
+      console.log(`Codex routing: ${hasRoutingFlag("--model") ? "custom model" : "curated model profile"}`)
     }
     return
   }
@@ -107,11 +151,7 @@ async function main() {
   }
 
   if (configureProviders) {
-    const result = await configureNvidiaAndOpenRouter()
-    console.log(`Configured NVIDIA Build and OpenRouter in ${result.targetPath}`)
-    if (result.backupPath) {
-      console.log(`Backup created at ${result.backupPath}`)
-    }
+    await configureRouting({ dryRun: false })
   }
 }
 
