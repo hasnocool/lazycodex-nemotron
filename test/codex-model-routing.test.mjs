@@ -1,7 +1,7 @@
 // test/codex-model-routing.test.mjs
 
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, it } from "node:test"
@@ -14,6 +14,7 @@ describe("Codex model routing", () => {
     const configPath = join(codexHome, "config.toml")
     const agentsDir = join(codexHome, "agents")
     const agentPath = join(agentsDir, "sisyphus.toml")
+    await mkdir(agentsDir, { recursive: true })
 
     await writeFile(agentPath, 'name = "sisyphus"\nmodel = "gpt-5.6-sol"\n', "utf8")
 
@@ -71,6 +72,29 @@ describe("Codex model routing", () => {
       assert.match(config, /env_key = "MY_PROVIDER_API_KEY"/)
       assert.match(config, /wire_api = "chat"/)
       assert.match(config, /model = "my-model"/)
+    } finally {
+      if (previousConfig === undefined) delete process.env.LAZYCODEX_CODEX_CONFIG
+      else process.env.LAZYCODEX_CODEX_CONFIG = previousConfig
+    }
+  })
+
+  it("creates a valid primary profile plus provider-specific profiles for curated dual-provider setup", async () => {
+    const root = await mkdtemp(join(tmpdir(), "lazycodex-dual-"))
+    const configPath = join(root, "config.toml")
+    const previousConfig = process.env.LAZYCODEX_CODEX_CONFIG
+    process.env.LAZYCODEX_CODEX_CONFIG = configPath
+
+    try {
+      const result = await configureCodexRouting({ args: ["--nvidia-build", "--openrouter"] })
+      const config = await readFile(configPath, "utf8")
+
+      assert.equal(result.profileName, "lazycodex")
+      assert.match(config, /\[profiles\.lazycodex\]/)
+      assert.match(config, /\[profiles\.lazycodex-nvidia\]/)
+      assert.match(config, /\[profiles\.lazycodex-openrouter\]/)
+      assert.match(config, /^profile = "lazycodex"$/m)
+      assert.match(config, /^model_provider = "nvidia"$/m)
+      assert.match(config, /^model = "nvidia\/nemotron-3-ultra-550b-a55b"$/m)
     } finally {
       if (previousConfig === undefined) delete process.env.LAZYCODEX_CODEX_CONFIG
       else process.env.LAZYCODEX_CODEX_CONFIG = previousConfig
