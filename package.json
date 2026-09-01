@@ -1,13 +1,14 @@
 {
   "name": "lazycodex-ai",
-  "version": "0.2.2",
-  "description": "Codex install alias for oh-my-openagent. Run `npx lazycodex-ai install` to set up the Codex platform.",
+  "version": "0.3.0",
+  "description": "Codex install alias for oh-my-openagent with NVIDIA Build and OpenRouter model profiles.",
   "type": "module",
   "bin": {
     "lazycodex-ai": "bin/lazycodex-ai.js"
   },
   "files": [
     "bin",
+    "lib",
     "README.md",
     "LICENSE"
   ],
@@ -19,7 +20,11 @@
     "codex",
     "oh-my-openagent",
     "ai-agents",
-    "orchestration"
+    "orchestration",
+    "nvidia",
+    "nvidia-build",
+    "openrouter",
+    "nemotron"
   ],
   "author": "Yeongyu Kim",
   "license": "MIT",
