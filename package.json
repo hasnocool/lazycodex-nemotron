@@ -1,7 +1,7 @@
 {
   "name": "lazycodex-ai",
-  "version": "0.4.0",
-  "description": "Model-agnostic Codex install alias for oh-my-openagent with curated NVIDIA Build and OpenRouter profiles.",
+  "version": "0.5.0",
+  "description": "Model-agnostic Codex provider routing for NVIDIA Build, OpenRouter, and custom OpenAI-compatible APIs.",
   "type": "module",
   "bin": {
     "lazycodex-ai": "bin/lazycodex-ai.js"
@@ -23,6 +23,8 @@
     "orchestration",
     "model-agnostic",
     "custom-models",
+    "openai-compatible",
+    "api-adapter",
     "nvidia",
     "nvidia-build",
     "openrouter",
